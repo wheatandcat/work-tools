@@ -5,6 +5,7 @@ function myFunction() {
   const COLUMN_NO_FINISHED = 4;
   const MAX_COLUMN_NO = 4;
   const checkMilestone = "v2.0.0";
+  
 
   var spreadsheet = SpreadsheetApp.openById(
     PropertiesService.getScriptProperties().getProperty("spreadsheetID")
