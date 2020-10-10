@@ -38,6 +38,22 @@ type ResponseData struct {
 	Repositories []string `json:"repositories"`
 }
 
+// CreateIssueResponse CreateIssueResponseのタイプ
+type CreateIssueResponse struct {
+	CreateIssue CreateIssueType `json:"createIssue"`
+}
+
+// CreateIssueType mutationのタイプ
+type CreateIssueType struct {
+	Issue Issue `json:"issue"`
+}
+
+// Issue issueのタイプ
+type Issue struct {
+	ID  string `json:"id"`
+	URL string `json:"url"`
+}
+
 // ResposeType Graphqlのタイプ
 type ResposeType struct {
 	Repository Repository `json:"repository"`
@@ -97,6 +113,13 @@ type Template struct {
 	Code  string
 }
 
+// LogFile LogFileのタイプ
+type LogFile struct {
+	ID             string
+	RepositoryName string
+	URL            string
+}
+
 func include(s []string, e string) bool {
 	for _, v := range s {
 		if e == v {
@@ -140,10 +163,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, item := range data {
+	var logFiles []LogFile
+	raw, err := ioutil.ReadFile("./log.json")
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	json.Unmarshal(raw, &logFiles)
+
+	var logIDList []string
+	for _, logFile := range logFiles {
+		if logFile.RepositoryName == config.GitHub.Repository {
+			logIDList = append(logIDList, logFile.ID)
+		}
+	}
+
+	for _, item := range data {
 		if !include(item.Repositories, config.GitHub.Repository) {
-			break
+			continue
+		}
+
+		if include(logIDList, strconv.Itoa(item.ID)) {
+			// 既に作成済み
+			fmt.Println("ID: " + strconv.Itoa(item.ID) + "は作成済みです(" + config.GitHub.Repository + ")")
+			continue
 		}
 
 		lid := ""
@@ -175,10 +218,22 @@ func main() {
 			LabelIds:     []string{lid},
 		}
 
-		if err := config.GitHub.createIssue(ci); err != nil {
+		cires, err := config.GitHub.createIssue(ci)
+		if err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("ID: " + strconv.Itoa(item.ID) + "は作成しました(" + config.GitHub.Repository + ")")
+
+		logFile := LogFile{
+			ID:             strconv.Itoa(item.ID),
+			RepositoryName: config.GitHub.Repository,
+			URL:            cires.CreateIssue.Issue.URL,
+		}
+		logFiles = append(logFiles, logFile)
 	}
+
+	file, _ := json.MarshalIndent(logFiles, "", " ")
+	_ = ioutil.WriteFile("log.json", file, 0644)
 
 }
 
@@ -193,8 +248,8 @@ query Repository($owner: String!, $name: String!) {
         id
         title
       }
-	}
-	labels(first: 20, orderBy: {field: CREATED_AT, direction: DESC}) {
+    }
+    labels(first: 20, orderBy: {field: CREATED_AT, direction: DESC}) {
       nodes {
         id
         name
@@ -203,6 +258,7 @@ query Repository($owner: String!, $name: String!) {
   }
 }
 `)
+
 	req.Var("owner", c.Owner)
 	req.Var("name", c.Repository)
 
@@ -220,10 +276,10 @@ query Repository($owner: String!, $name: String!) {
 
 	rid := respData.Repository.ID
 	mid := ""
+
 	for _, m := range respData.Repository.Milestones.Nodes {
 		if m.Title == mt {
 			mid = m.ID
-			break
 		}
 	}
 
@@ -241,8 +297,7 @@ query Repository($owner: String!, $name: String!) {
 	return ri, nil
 }
 
-func (c *GitHubConfig) createIssue(ci CreateIssue) error {
-	fmt.Printf("%+v", ci)
+func (c *GitHubConfig) createIssue(ci CreateIssue) (CreateIssueResponse, error) {
 	client := graphql.NewClient("https://api.github.com/graphql")
 	req := graphql.NewRequest(`
 mutation CreateIssue(
@@ -254,7 +309,8 @@ mutation CreateIssue(
   ) {
   createIssue(input: {repositoryId: $repositoryId, title:$title, body: $body, milestoneId: $milestoneId, labelIds: $labelIds}) {
     issue {
-      id
+	  id
+	  url
     }
   }
 }
@@ -271,12 +327,12 @@ mutation CreateIssue(
 
 	ctx := context.Background()
 
-	var respData ResposeType
+	var respData CreateIssueResponse
 	if err := client.Run(ctx, req, &respData); err != nil {
-		return err
+		return respData, err
 	}
 
-	return nil
+	return respData, nil
 }
 
 // ToBody 本文作成

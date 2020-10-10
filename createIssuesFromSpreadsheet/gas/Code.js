@@ -5,6 +5,7 @@ function doGet(e) {
   const COLUMN_NO_BODY = 4;
   const COLUMN_NO_LABEL = 5;
   const COLUMN_NO_GAS_TOOL = 6;
+  const COLUMN_NO_GAS_TOOL2 = 7;
   const MAX_COLUMN_NO = 8;
 
   const milestone = e.parameter.milestone;
@@ -30,10 +31,14 @@ function doGet(e) {
     const label = val[COLUMN_NO_LABEL - 1];
     const body = val[COLUMN_NO_BODY - 1];
     const gasTools = val[COLUMN_NO_GAS_TOOL - 1];
+    const gasTools2 = val[COLUMN_NO_GAS_TOOL2 - 1];
 
-    const repositories = []
+    const repositories = [];
     if (gasTools) {
       repositories.push("gas-tools");
+    }
+    if (gasTools2) {
+      repositories.push("gas-tools2");
     }
 
     const data = {
