@@ -2,14 +2,14 @@ package createissue
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/bradleyfalzon/ghinstallation"
-	"github.com/google/go-github/v29/github"
 )
 
 const RepoOwner = "wheatandcat"
@@ -17,6 +17,22 @@ const Repo = "gas-tools"
 const IssueNumber = 17
 
 func CreateIssue(w http.ResponseWriter, r *http.Request) {
+	var d struct {
+		ID           int      `json:"id"`
+		Priority     string   `json:"priority"`
+		Title        string   `json:"title"`
+		Body         string   `json:"body"`
+		Env          string   `json:"env"`
+		Image        string   `json:"image"`
+		Version      string   `json:"version"`
+		Repositories []string `json:"repositories"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+		fmt.Fprint(w, "Hello, World!")
+		return
+	}
+
 	InstallationID, err := strconv.Atoi(os.Getenv("INSTALLATION_ID"))
 	if err != nil {
 		log.Fatal(err)
@@ -34,19 +50,29 @@ func CreateIssue(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	client := github.NewClient(&http.Client{
-		Transport: itr,
-		Timeout:   5 * time.Second,
-	})
-
 	ctx := context.Background()
+	token, err := itr.Token(ctx)
 
-	body := "hello"
-	comment := &github.IssueComment{
-		Body: &body,
-	}
-	if _, _, err := client.Issues.CreateComment(ctx, RepoOwner, Repo, IssueNumber, comment); err != nil {
+	if err != nil {
 		log.Fatal(err)
+	}
+
+	for _, repository := range d.Repositories {
+		req := Request{
+			Token:      token,
+			Owner:      RepoOwner,
+			Version:    d.Version,
+			Repository: repository,
+			ID:         d.ID,
+			Priority:   d.Priority,
+			Title:      d.Title,
+			Body:       d.Body,
+			Env:        d.Env,
+			Image:      d.Image,
+		}
+		if err := Create(req); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
