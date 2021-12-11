@@ -1,0 +1,4 @@
+vendor
+private-key.pem
+.env.yaml
+.envrc
