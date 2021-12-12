@@ -12,11 +12,12 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 )
 
-const RepoOwner = "wheatandcat"
-const Repo = "gas-tools"
-const IssueNumber = 17
+type Response struct {
+	Issues []Issue `json:"issues"`
+}
 
 func CreateIssue(w http.ResponseWriter, r *http.Request) {
+
 	var d struct {
 		ID           int      `json:"id"`
 		Priority     string   `json:"priority"`
@@ -57,10 +58,12 @@ func CreateIssue(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	res := Response{}
+
 	for _, repository := range d.Repositories {
 		req := Request{
 			Token:      token,
-			Owner:      RepoOwner,
+			Owner:      os.Getenv("GITHUB_OWNER"),
 			Version:    d.Version,
 			Repository: repository,
 			ID:         d.ID,
@@ -70,11 +73,23 @@ func CreateIssue(w http.ResponseWriter, r *http.Request) {
 			Env:        d.Env,
 			Image:      d.Image,
 		}
-		if err := Create(req); err != nil {
+		r, err := Create(req)
+		if err != nil {
 			log.Fatal(err)
 		}
+		is := Issue{
+			ID:    strconv.Itoa(r.ID),
+			Title: r.CreateIssue.Issue.Title,
+			URL:   r.CreateIssue.Issue.URL,
+		}
+		res.Issues = append(res.Issues, is)
+	}
+
+	resJson, err := json.Marshal(res)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	w.Write(resJson)
 }

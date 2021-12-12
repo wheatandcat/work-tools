@@ -32,6 +32,7 @@ type ResponseData struct {
 
 type CreateIssueResponse struct {
 	CreateIssue CreateIssueType `json:"createIssue"`
+	ID          int             `json:"id"`
 }
 
 type CreateIssueType struct {
@@ -39,8 +40,9 @@ type CreateIssueType struct {
 }
 
 type Issue struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
 }
 
 type ResposeType struct {
@@ -109,7 +111,10 @@ type Request struct {
 	Image      string
 }
 
-func Create(r Request) error {
+func Create(r Request) (CreateIssueResponse, error) {
+
+	var cir CreateIssueResponse
+
 	gc := GitHubConfig{
 		Token:      r.Token,
 		Owner:      r.Owner,
@@ -118,7 +123,7 @@ func Create(r Request) error {
 
 	ri, err := gc.getRepositoryInfo(r.Version)
 	if err != nil {
-		return err
+		return cir, err
 	}
 
 	bugLabel := ""
@@ -143,7 +148,7 @@ func Create(r Request) error {
 	}
 	body, err := tmp.ToBody()
 	if err != nil {
-		return err
+		return cir, err
 	}
 
 	ci := CreateIssueRequest{
@@ -155,18 +160,20 @@ func Create(r Request) error {
 	}
 
 	if r.Priority == "高" {
-		_, err := gc.createIssue(ci)
+		cir, err = gc.createIssue(ci)
 		if err != nil {
-			return err
+			return cir, err
 		}
 	} else {
-		_, err := gc.createIssue2(ci)
+		cir, err = gc.createIssue2(ci)
 		if err != nil {
-			return err
+			return cir, err
 		}
 	}
 
-	return nil
+	cir.ID = r.ID
+
+	return cir, nil
 }
 
 func (c *GitHubConfig) getRepositoryInfo(mt string) (RepositoryInfo, error) {
@@ -239,6 +246,7 @@ mutation CreateIssue(
   createIssue(input: {repositoryId: $repositoryId, title:$title, body: $body, milestoneId: $milestoneId, labelIds: $labelIds}) {
     issue {
 	  id
+	  title
 	  url
     }
   }
