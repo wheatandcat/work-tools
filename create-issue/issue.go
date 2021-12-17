@@ -172,6 +172,7 @@ func Create(r Request) (CreateIssueResponse, error) {
 	}
 
 	cir.ID = r.ID
+	cir.CreateIssue.Issue.Title = title
 
 	return cir, nil
 }
@@ -284,6 +285,7 @@ mutation CreateIssue(
   createIssue(input: {repositoryId: $repositoryId, title:$title, body: $body, labelIds: $labelIds}) {
     issue {
 	  id
+	  title
 	  url
     }
   }

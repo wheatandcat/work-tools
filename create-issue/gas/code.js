@@ -6,6 +6,8 @@ const CREATE_ISSUE_API =
   PropertiesService.getScriptProperties().getProperty("CREATE_ISSUE_API");
 const SLACK_API =
   PropertiesService.getScriptProperties().getProperty("SLACK_API");
+const VERIFY_ID_TOKEN =
+  PropertiesService.getScriptProperties().getProperty("VERIFY_ID_TOKEN");
 
 function doGet(e) {
   const no = e.parameter.no.split(",");
@@ -115,11 +117,16 @@ const createIssue = async (no) => {
 };
 
 const postCrateIssue = async (req) => {
-  const res = await UrlFetchApp.fetch(CREATE_ISSUE_API, {
+  const option = {
     method: "POST",
+    headers: {
+      Authorization: VERIFY_ID_TOKEN,
+    },
     contentType: "application/json",
     payload: JSON.stringify(req),
-  });
+  };
+
+  const res = await UrlFetchApp.fetch(CREATE_ISSUE_API, option);
 
   return JSON.parse(res.getContentText());
 };

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,6 +16,11 @@ type Response struct {
 }
 
 func CreateIssue(w http.ResponseWriter, r *http.Request) {
+	at := r.Header.Get("Authorization")
+	if at != os.Getenv("VERIFY_ID_TOKEN") {
+		http.Error(w, fmt.Errorf("error: verifying ID token, %s", at).Error(), http.StatusInternalServerError)
+		return
+	}
 
 	var d struct {
 		ID           int      `json:"id"`
@@ -30,32 +34,36 @@ func CreateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
-		fmt.Fprint(w, "Hello, World!")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	InstallationID, err := strconv.Atoi(os.Getenv("INSTALLATION_ID"))
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	githubAppID := os.Getenv("GITHUB_APP_ID")
 
 	appID, err := strconv.ParseInt(githubAppID, 10, 64)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	key := os.Getenv("GITHUB_APP_PRIVATE_KEY")
 	tr := http.DefaultTransport
 	itr, err := ghinstallation.New(tr, appID, int64(InstallationID), []byte(key))
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	ctx := context.Background()
 	token, err := itr.Token(ctx)
 
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	res := Response{}
@@ -75,7 +83,7 @@ func CreateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 		r, err := Create(req)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		is := Issue{
 			ID:    strconv.Itoa(r.ID),
@@ -87,7 +95,8 @@ func CreateIssue(w http.ResponseWriter, r *http.Request) {
 
 	resJson, err := json.Marshal(res)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
