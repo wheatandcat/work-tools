@@ -1,4 +1,4 @@
-package main
+package postAssignableIssues
 
 import (
 	"context"
@@ -7,32 +7,38 @@ import (
 	"os"
 	"strconv"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/bradleyfalzon/ghinstallation"
 )
 
-func main() {
+type Data struct {
+	Repository string
+	Name       string
+	Labels     []string
+}
+
+func PostAssignableIssuesPubSub(ctx context.Context, m *pubsub.Message) error {
 	InstallationID, err := strconv.Atoi(os.Getenv("INSTALLATION_ID"))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	githubAppID := os.Getenv("GITHUB_APP_ID")
 
 	appID, err := strconv.ParseInt(githubAppID, 10, 64)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	key := os.Getenv("GITHUB_APP_PRIVATE_KEY")
 	tr := http.DefaultTransport
 	itr, err := ghinstallation.New(tr, appID, int64(InstallationID), []byte(key))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	ctx := context.Background()
 	token, err := itr.Token(ctx)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	repositories := []string{"gas-tools"}
@@ -47,12 +53,10 @@ func main() {
 
 		t, err := GetIssueText(r)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		text += t
 	}
-
-	log.Println(text)
 
 	rn := RequestNote{
 		Token:   os.Getenv("NOTE_TOKEN"),
@@ -62,6 +66,10 @@ func main() {
 	}
 
 	if err := PostNote(rn); err != nil {
-		panic(err)
+		return err
 	}
+
+	log.Println("OK")
+
+	return nil
 }

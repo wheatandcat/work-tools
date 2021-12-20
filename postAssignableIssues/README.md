@@ -1,12 +1,5 @@
-# issueを作成するAPIを生成
+# アサイン募集中なissueを投稿する
 
-■ 対象のスプレットシート
-https://docs.google.com/spreadsheets/d/16VnhxrxgA9KZVzN_EeykRRTEku0rYabmDot4GXTTO0k/edit#gid=0
-
-
-Retoolで表示
-
-<img src="./doc/001.png" />
 
 
 ## デプロイ
@@ -14,5 +7,5 @@ Retoolで表示
 ```
 $ export GITHUB_APP_PRIVATE_KEY=$(cat private-key.pem)
 
-$ gcloud functions deploy CreateIssue --set-env-vars GITHUB_APP_PRIVATE_KEY=$GITHUB_APP_PRIVATE_KEY,GITHUB_APP_ID=$GITHUB_APP_ID,GITHUB_OWNER=$GITHUB_OWNER,INSTALLATION_ID=$INSTALLATION_ID,VERIFY_ID_TOKEN=$VERIFY_ID_TOKEN --runtime go116 --trigger-http --region asia-northeast1
+$ gcloud functions deploy PostAssignableIssuesPubSub --set-env-vars GITHUB_APP_PRIVATE_KEY=$GITHUB_APP_PRIVATE_KEY,GITHUB_APP_ID=$GITHUB_APP_ID,GITHUB_OWNER=$GITHUB_OWNER,INSTALLATION_ID=$INSTALLATION_ID,VERIFY_ID_TOKEN=$VERIFY_ID_TOKEN,NOTE_TOKEN=$NOTE_TOKEN,NOTE_ID=$NOTE_ID,NOTE_HOST=$NOTE_HOST --runtime go116 --trigger-resource post_assignable_issues --trigger-event google.pubsub.topic.publish --region asia-northeast1
 ```
