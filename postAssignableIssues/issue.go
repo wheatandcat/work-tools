@@ -77,7 +77,7 @@ func (c *GitHubConfig) GetIssue() ([]Issue, error) {
 	req := graphql.NewRequest(`
 query Repository($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
-    issues(first: 100, labels: ["アサイン募集中"], orderBy: {field: CREATED_AT, direction: DESC}, filterBy: {assignee: null}) {
+    issues(first: 100, states: [OPEN], labels: ["アサイン募集中"], orderBy: {field: CREATED_AT, direction: DESC}, filterBy: {assignee: null}) {
       nodes {
         id
         title
