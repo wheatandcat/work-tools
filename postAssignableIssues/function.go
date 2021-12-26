@@ -41,7 +41,7 @@ func PostAssignableIssuesPubSub(ctx context.Context, m *pubsub.Message) error {
 		return err
 	}
 
-	repositories := []string{"gas-tools"}
+	repositories := []string{"tool-test"}
 	text := ""
 
 	for _, rep := range repositories {

@@ -23,9 +23,23 @@ type IssuesNodes struct {
 }
 
 type Issue struct {
-	ID    string `json:"id"`
+	ID        string     `json:"id"`
+	Title     string     `json:"title"`
+	URL       string     `json:"url"`
+	Labels    LabelNodes `json:"labels"`
+	Milestone Milestone  `json:"milestone"`
+}
+
+type LabelNodes struct {
+	Nodes []Label `json:"nodes"`
+}
+
+type Label struct {
+	Name string `json:"name"`
+}
+
+type Milestone struct {
 	Title string `json:"title"`
-	URL   string `json:"url"`
 }
 
 type ResposeType struct {
@@ -42,26 +56,52 @@ type Request struct {
 	Repository string
 }
 
+type TempleIssueData struct {
+	Category string
+	Issue    Issue
+}
+
 type TempleData struct {
 	Repository string
-	Issues     []Issue
+	Issue      []TempleIssueData
 }
 
 func GetIssueText(r Request) (string, error) {
-	gc := GitHubConfig{
-		Token:      r.Token,
-		Owner:      r.Owner,
-		Repository: r.Repository,
-	}
+	gc := GitHubConfig(r)
 
-	is, err := gc.GetIssue()
+	iss, err := gc.GetIssue()
 	if err != nil {
 		return "", err
 	}
 
+	categories := []string{"RFP", "ドキュメンテーション", "設計前", "運用改善"}
+
 	t := TempleData{
 		Repository: r.Repository,
-		Issues:     is,
+	}
+
+	for _, is := range iss {
+		for _, c := range categories {
+			if is.isTempleIssueLabel(c) {
+				tis := TempleIssueData{
+					Category: c,
+					Issue:    is,
+				}
+				t.Issue = append(t.Issue, tis)
+			}
+		}
+	}
+
+	ids := t.GetIssueIds()
+
+	for _, is := range iss {
+		if !include(ids, is.ID) {
+			tis := TempleIssueData{
+				Category: "開発issue",
+				Issue:    is,
+			}
+			t.Issue = append(t.Issue, tis)
+		}
 	}
 
 	text, err := t.ToBody()
@@ -70,6 +110,36 @@ func GetIssueText(r Request) (string, error) {
 	}
 
 	return text, nil
+}
+
+func (t *TempleData) GetIssueIds() []string {
+	ids := []string{}
+	for _, is := range t.Issue {
+		ids = append(ids, is.Issue.ID)
+	}
+
+	return ids
+}
+
+func (t *TempleData) GetCategories() []string {
+	categories := []string{}
+	for _, is := range t.Issue {
+		if !include(categories, is.Category) {
+			categories = append(categories, is.Category)
+		}
+	}
+
+	return categories
+}
+
+func (is *Issue) isTempleIssueLabel(Label string) bool {
+	for _, la := range is.Labels.Nodes {
+		if la.Name == Label {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *GitHubConfig) GetIssue() ([]Issue, error) {
@@ -82,6 +152,15 @@ query Repository($owner: String!, $name: String!) {
         id
         title
         url
+        labels(first: 5, orderBy: {field: CREATED_AT, direction: DESC}) {
+          nodes {
+            name
+          }
+        }
+       	milestone {
+          id
+          title
+        }
       }
     }
   }
@@ -111,10 +190,70 @@ query Repository($owner: String!, $name: String!) {
 }
 
 func (t *TempleData) ToBody() (string, error) {
+	text := "### ■ " + t.Repository + " "
+
+	if len(t.Issue) == 0 {
+		return t.ToBodyNoData()
+	}
+
+	categories := t.GetCategories()
+
+	for _, category := range categories {
+		tc, err := t.ToCategoryBody(category)
+		if err != nil {
+			return "", err
+		}
+
+		text += tc
+
+	}
+
+	return text, nil
+}
+
+func (t *TempleData) ToCategoryBody(category string) (string, error) {
+
+	type templeIssue struct {
+		Category string
+		Issues   []Issue
+	}
+
+	ti := templeIssue{
+		Category: category,
+	}
+
+	for _, is := range t.Issue {
+		if is.Category == category {
+			ti.Issues = append(ti.Issues, is.Issue)
+		}
+	}
+
+	if len(ti.Issues) == 0 {
+		return "", nil
+	}
+
 	text := `
-### ■ {{ .Repository }}
+#### {{ .Category }}
 {{range $index, $is := .Issues}}
- - [{{ $is.Title }}](#{{ $is.URL }}){{end}}
+ - [{{ $is.Title }}]({{ $is.URL }}){{end}}
+`
+
+	tpl, err := template.New("").Parse(text)
+	if err != nil {
+		return "", err
+	}
+
+	var doc bytes.Buffer
+	if err := tpl.Execute(&doc, ti); err != nil {
+		return "", err
+	}
+
+	return doc.String(), nil
+}
+
+func (t *TempleData) ToBodyNoData() (string, error) {
+	text := `
+募集中のissueがありません
 `
 
 	tpl, err := template.New("").Parse(text)
@@ -128,4 +267,14 @@ func (t *TempleData) ToBody() (string, error) {
 	}
 
 	return doc.String(), nil
+
+}
+
+func include(s []string, e string) bool {
+	for _, v := range s {
+		if e == v {
+			return true
+		}
+	}
+	return false
 }
