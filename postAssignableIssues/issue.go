@@ -16,6 +16,7 @@ type GitHubConfig struct {
 	Token      string
 	Owner      string
 	Repository string
+	Categories []string
 }
 
 type IssuesNodes struct {
@@ -54,6 +55,7 @@ type Request struct {
 	Token      string
 	Owner      string
 	Repository string
+	Categories []string
 }
 
 type TempleIssueData struct {
@@ -74,14 +76,12 @@ func GetIssueText(r Request) (string, error) {
 		return "", err
 	}
 
-	categories := []string{"RFP", "ドキュメンテーション", "設計前", "運用改善"}
-
 	t := TempleData{
 		Repository: r.Repository,
 	}
 
 	for _, is := range iss {
-		for _, c := range categories {
+		for _, c := range r.Categories {
 			if is.isTempleIssueLabel(c) {
 				tis := TempleIssueData{
 					Category: c,
@@ -235,7 +235,7 @@ func (t *TempleData) ToCategoryBody(category string) (string, error) {
 	text := `
 #### {{ .Category }}
 {{range $index, $is := .Issues}}
- - [{{ $is.Title }}]({{ $is.URL }}){{end}}
+ - {{ if $is.Milestone.Title }}【{{$is.Milestone.Title}}】{{ end }}[{{ $is.Title }}]({{ $is.URL }}){{end}}
 `
 
 	tpl, err := template.New("").Parse(text)
