@@ -2,7 +2,6 @@ package postAssignableIssues
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,10 +10,9 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 )
 
-type Data struct {
+type IssueConfig struct {
 	Repository string
-	Name       string
-	Labels     []string
+	Categories []string
 }
 
 func PostAssignableIssuesPubSub(ctx context.Context, m *pubsub.Message) error {
@@ -41,14 +39,18 @@ func PostAssignableIssuesPubSub(ctx context.Context, m *pubsub.Message) error {
 		return err
 	}
 
-	repositories := []string{"gas-tools"}
+	items := []IssueConfig{{
+		Repository: "tool-test",
+		Categories: []string{"RFP", "ドキュメンテーション", "設計前", "運用改善"},
+	}}
 	text := ""
 
-	for _, rep := range repositories {
+	for _, item := range items {
 		r := Request{
 			Token:      token,
 			Owner:      os.Getenv("GITHUB_OWNER"),
-			Repository: rep,
+			Repository: item.Repository,
+			Categories: item.Categories,
 		}
 
 		t, err := GetIssueText(r)
@@ -68,8 +70,6 @@ func PostAssignableIssuesPubSub(ctx context.Context, m *pubsub.Message) error {
 	if err := PostNote(rn); err != nil {
 		return err
 	}
-
-	log.Println("OK")
 
 	return nil
 }
