@@ -2,6 +2,9 @@
 
 <img width="480" alt="スクリーンショット 2021-12-29 13 53 32" src="https://user-images.githubusercontent.com/19209314/147628553-5d193c28-2418-4afa-8116-40a2c980893e.png">
 
+以下のリポジトリのissueを元に作成
+https://github.com/wheatandcat/tool-test/issues
+
 
 ## 仕組み
 
