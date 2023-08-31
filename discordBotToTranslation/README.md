@@ -12,5 +12,5 @@ export GOOGLE_APPLICATION_CREDENTIALS=xxxxxx
 ## ローカル実行
 
 ```bash
-flyctl deploy
+go run main.go
 ```
