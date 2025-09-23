@@ -1,0 +1,17 @@
+{
+  "name": "ios-shortcut-backend",
+  "version": "1.0.0",
+  "description": "iOS Shortcut用のCloud Functions",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "functions-framework --target=processRequest",
+    "deploy": "gcloud functions deploy processRequest --gen2 --runtime=nodejs20 --region=asia-northeast1 --source=. --entry-point=processRequest --trigger-http --allow-unauthenticated"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
